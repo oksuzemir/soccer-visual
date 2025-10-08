@@ -3,4 +3,3 @@ Pillow
 pydantic
 python-dotenv
 rich
-cachetools

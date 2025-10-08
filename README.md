@@ -1,52 +1,100 @@
-# soccer-visual
+# soccer-visual (football-data.org sürümü)
 
-Futbol oyuncu maç / sezon istatistiklerini şablon görsel (kart) haline dönüştüren Python projesi.
+Bu sürüm yalnızca [football-data.org](https://www.football-data.org/) API'sini kullanır.
 
-## Özellikler (İlk Sürüm)
+## Sağlanan Veriler (Free Tier Kısıtları)
 
-- API-Football üzerinden oyuncu istatistiklerini çekme
-- Normalize edip `CardStats` modelinde toplama
-- Pillow ile görsel şablona işleme
-- Komut satırı aracı (`cli.py`): tek oyuncu kartı üretir
+football-data.org free tier ayrıntılı bireysel oyuncu maç istatistikleri (pas isabeti, şut isabeti, dakika, kartlar) sunmaz. Bu nedenle kartta:
+
+- Goals: `GET /v4/competitions/{id}/scorers` endpoint’inden (eşleşen isim bulunursa)
+- Takım ve oyuncu temel bilgisi: `GET /v4/teams/{team_id}` içindeki `squad`
+- Diğer metrikler (Assists, Minutes, Shots, Pass Accuracy, Distance, Cards) => “N/A” (isteğe bağlı gizlenebilir)
+
+## Özellikler
+
+- Tek oyuncu kartı üretimi: isim substring eşleşmesi ile kadrodan oyuncu bulma
+- Tüm takım kadrosu için toplu kart üretimi (`--team-batch`)
+- Placeholder siluet görseli (foto verisi olmadığı için)
+- Metrik yoksa N/A yazma veya donut alanını gri gösterme
+- Basit layout, Pillow ile görsel render
 
 ## Kurulum
 
 ```bash
-git clone https://github.com/oksuzemir/soccer-visual.git
-cd soccer-visual
 python -m venv .venv
-source .venv/bin/activate
+source .venv/Scripts/activate  # Windows Git Bash
 pip install -r requirements.txt
 cp .env.example .env
-# .env içinde API anahtarını ekleyin
+# .env içine FOOTBALL_DATA_KEY=... ekle
 ```
+
+API token almak:
+
+1. https://www.football-data.org/client/register
+2. Hesap oluştur, mail doğrula.
+3. Dashboard’da API token’ı kopyala.
+4. `.env` içine `FOOTBALL_DATA_KEY=TOKEN` yaz.
 
 ## Kullanım
 
+Tek oyuncu:
+
 ```bash
-python src/cli.py --player 276 --season 2023 --league 39
+python src/cli.py \
+  --team-id 65 \
+  --player-name haaland \
+  --competition-id 2021 \
+  -v
 ```
 
-Çıktı: `output/player_276.png`
+Örnek IDs:
 
-## Yapı
+- Premier League (competition): 2021
+- Manchester City (team): 65
 
-- `src/soccer_visual/config`: Ayarlar
-- `src/soccer_visual/data_providers`: Dış API katmanı
-- `src/soccer_visual/processing`: Normalizasyon / dönüştürme
-- `src/soccer_visual/models`: Pydantic modeller
-- `src/soccer_visual/rendering`: Görsel çizim altyapısı
-- `src/soccer_visual/utils`: Yardımcı fonksiyonlar
-- `assets/`: Şablon, font, ikon
+Toplu kart (takım kadrosu):
 
-## Geliştirme Yol Haritası
+```bash
+python src/cli.py --team-id 65 --competition-id 2021 --team-batch -v
+```
 
-- [ ] Donut chart’ları daha dinamik skalaya bağla
-- [ ] Pass accuracy gauge ekle
-- [ ] Çoklu maç trend grafiği
-- [ ] FastAPI endpoint (kart üretimi)
-- [ ] SVG şablon alternatifi
+Not: `--team-batch` modunda kadrodaki tüm oyuncular için goals lookup yapılır; scorer listesinde bulunmayanlar 0 goal görünür.
+
+Çıktı: `output/player_<NAME>.png` veya batch modunda `output/team_<TEAMNAME>/player_<NAME>.png`
+
+## .env Örneği
+
+```
+FOOTBALL_DATA_KEY=YOUR_TOKEN_HERE
+```
+
+## Dosya Yapısı
+
+```
+assets/
+  fonts/
+  templates/
+  placeholder_player.png
+src/
+  cli.py
+  soccer_visual/
+    config/settings.py
+    data_providers/football_data.py
+    data_providers/exceptions.py
+    models/player.py
+    rendering/card_renderer.py
+    rendering/layout_constants.py
+    utils/
+        __init__.py
+```
+
+## Yol Haritası
+
+- [ ] İsteğe bağlı: API-Football entegrasyonunu opsiyonel mod olarak geri ekleme
+- [ ] Statik/derlenen SVG layout
+- [ ] JSON cache (scorers + team) ile rate limit azaltma
+- [ ] Oyuncu isim eşleşme skorlaması (Levenshtein)
 
 ## Lisans
 
-(Terp tercihine göre ekleyin)
+Uygun bir lisans seçip ekleyin (MIT vb.).
